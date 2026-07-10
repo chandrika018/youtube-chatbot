@@ -1,40 +1,52 @@
 from youtube_transcript_api import YouTubeTranscriptApi
+from urllib.parse import urlparse, parse_qs
 
+def extract_video_id(video_url: str):
 
-def get_transcript(video_id: str) -> str:
-    """
-    Fetch transcript from a YouTube video.
+    parsed_url = urlparse(video_url)
 
-    Args:
-        video_id (str): YouTube video ID
+    if parsed_url.hostname == "youtu.be":
+        return parsed_url.path[1:]
 
-    Returns:
-        str: Complete transcript as a single string
-    """
+    if parsed_url.hostname in ("www.youtube.com", "youtube.com"):
+        return parse_qs(parsed_url.query).get("v", [None])[0]
+
+    return None
+
+def get_transcript(video_url: str):
+
+    video_id = extract_video_id(video_url)
+
+    if not video_id:
+        print("Invalid YouTube URL")
+        return None
 
     try:
+
         transcript = YouTubeTranscriptApi().fetch(
             video_id,
-            languages=["en", "hi"]   # Priority: English, then Hindi
+            languages=["en", "hi"]
         )
-         
 
-        transcript_text = " ".join(chunk.text for chunk in transcript)
+        transcript_text = " ".join(
+            chunk.text for chunk in transcript
+        )
 
-        print("Trenascript :", len(transcript_text))
+        print("Transcript Length:", len(transcript_text))
 
         return transcript_text
 
     except Exception as e:
-        print("No caption available for this video:", e)
+        print("No caption available:", e)
         return None
 
 
 # For testing this file independently
 if __name__ == "__main__":
-    video_id = input("Enter Video ID: ")
 
-    transcript = get_transcript(video_id)
+    video_url = input("Enter YouTube URL: ")
+
+    transcript = get_transcript(video_url)
 
     if transcript:
-        print(transcript)
+        print(transcript[:500])

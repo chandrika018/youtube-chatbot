@@ -1,21 +1,24 @@
 from vector_store import get_vector_store
 
 
-def get_retriever(video_id: str):
 
-    vector_db = get_vector_store(video_id)
+def get_retriever(video_url: str):
+
+    vector_db = get_vector_store(video_url)
 
     if vector_db is None:
         return None
 
 
     retriever = vector_db.as_retriever(
-        search_type = "mmr",
-        search_kwargs={
-            "k": 3,
-            "fetch_k":10
-        }
-    )
+    search_type="mmr",
+    search_kwargs={
+        "k": 5,
+        "fetch_k": 20,
+        "lambda_mult": 0.7
+    }
+)
+
 
     return retriever
 
@@ -24,9 +27,9 @@ def get_retriever(video_id: str):
 # Testing
 if __name__ == "__main__":
 
-    video_id = input("Enter Video ID: ")
+    video_url = input("Enter Video URL: ")
 
-    retriever = get_retriever(video_id)
+    retriever = get_retriever(video_url)
 
 
     if retriever is not None:

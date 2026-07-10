@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
-
+import time
 from retriever import get_retriever
 
 
@@ -11,87 +11,81 @@ from retriever import get_retriever
 load_dotenv()
 
 
-def ask_question(video_id: str, question: str):
-    """
-    Answer user question based on YouTube transcript.
-    """
-
-    # Get Retriever
-    retriever = get_retriever(video_id)
-
-    if retriever is None:
-        return "Transcript not found."
-
-
-    # Retrieve relevant documents
-    docs = retriever.invoke(question)
-
-
-    if not docs:
-        return "I couldn't find relevant information in the video."
-
-
-    print("Retrieved Chunks:", len(docs))
-
-    for i, doc in enumerate(docs, start=1):
-        print(f"\nChunk {i}:")
-        print(doc.page_content[:200])
-
-
-    # Create Context
-    context = "\n\n".join(
-        doc.page_content for doc in docs
-    )
-
-
-    print("\nContext Length:", len(context))
-
-
     # Gemini Model
-    llm = ChatGroq(
-        model="llama-3.1-8b-instant",
+llm = ChatGroq(
+        model="openai/gpt-oss-20b",
         groq_api_key=os.getenv("GROQ_API_KEY"),
         temperature=0.3
     )
 
 
     # Prompt Template
-    prompt = ChatPromptTemplate.from_template(
+prompt = ChatPromptTemplate.from_template(
     """
-    You are a YouTube video assistant.
+You are a Retrieval-Augmented Generation (RAG) assistant.
 
-Use ONLY the context below to answer.
+Your knowledge is limited ONLY to the retrieved transcript.
 
-If context does not contain the answer,
-say:
-"I couldn't find that information in the video."
+Instructions:
 
-Context:
+- Read every retrieved chunk carefully.
+- If one or more chunks contain information related to the user's question, answer using ONLY those chunks.
+- Never reject a question if relevant information exists in the retrieved context.
+- Even if the information is partial, provide the partial answer.
+- Do not invent facts.
+- Respond with "I couldn't find that information in the video." ONLY when every retrieved chunk is completely unrelated to the question.
+
+Retrieved Chunks:
 {context}
 
 Question:
 {question}
 
 Answer:
-"""
-
+    """
     )
 
 
     # Create Chain
-    chain = prompt | llm
+chain = prompt | llm
 
+def ask_question(video_url: str, question: str):
 
-    # Generate Answer
+    total_start = time.time()
+
+    # Retriever
+    t1 = time.time()
+    retriever = get_retriever(video_url)
+    print(f"Retriever Time: {time.time()-t1:.2f} sec")
+
+    if retriever is None:
+        return "Transcript not found."
+
+    # Retrieval
+    t2 = time.time()
+    docs = retriever.invoke(question)
+    print(f"Search Time: {time.time()-t2:.2f} sec")
+
+    if not docs:
+        return "I couldn't find relevant information in the video."
+
+    context = "\n\n".join(doc.page_content for doc in docs)
+
+    # LLM
+    t3 = time.time()
     response = chain.invoke(
         {
             "context": context,
             "question": question
         }
     )
+    print(f"LLM Time: {time.time()-t3:.2f} sec")
 
+    print(f"Total Time: {time.time()-total_start:.2f} sec")
 
     return response.content
+
+
 
 
 
@@ -99,7 +93,7 @@ Answer:
 
 if __name__ == "__main__":
 
-    video_id = input("Enter Video ID: ")
+    video_url = input("Enter Video url: ")
 
 
     while True:
@@ -114,7 +108,7 @@ if __name__ == "__main__":
 
 
         answer = ask_question(
-            video_id,
+            video_url,
             question
         )
 

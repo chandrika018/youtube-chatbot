@@ -1,41 +1,41 @@
-
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
 from transcript import get_transcript
 
-def get_embeddings(video_id: str):
+# Load embedding model only once
+embedding_model = HuggingFaceEmbeddings(
+    model_name="all-MiniLM-L6-v2"
+)
 
-    transcript_text = get_transcript(video_id)
+
+def get_documents(video_url: str):
+
+    transcript_text = get_transcript(video_url)
 
     if transcript_text is None:
-        return None, None
-    
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size = 500,
-        chunk_overlap = 50
+        return None
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200
     )
 
-    docs = text_splitter.create_documents([transcript_text])
+    docs = splitter.create_documents([transcript_text])
 
-    embedding_model = HuggingFaceEmbeddings(
-        model_name = "BAAI/bge-small-en-v1.5"
-        )
-    
-    print(len(docs))
-    
-    return docs, embedding_model
-     
-     
+    print("Chunks:", len(docs))
+
+    return docs
+
+
+def get_embedding_model():
+    return embedding_model
+
+
 if __name__ == "__main__":
 
-    video_id = input("Enter Video ID: ")
+    video_url = input("Enter Video URL: ")
 
-    docs, embedding_model = get_embeddings(video_id)
+    docs = get_documents(video_url)
 
-    if docs is not None:
-        print(f"Total Chunks: {len(docs)}")
-        print("\nFirst Chunk:\n")
-        print(docs[0].page_content[:500])
-    else:
-        print("transcript is not found")
+    if docs:
+        print(f"Chunks: {len(docs)}")
