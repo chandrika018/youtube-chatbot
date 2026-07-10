@@ -4,25 +4,25 @@ An AI-powered chatbot that allows users to ask questions about any YouTube video
 
 ## 🚀 Features
 
-* Extracts transcripts from YouTube videos.
-* Splits transcripts into semantic chunks.
-* Stores embeddings in ChromaDB.
-* Retrieves relevant context using MMR search.
-* Answers questions using the Groq Llama 3.1 model.
-* Uses Retrieval-Augmented Generation (RAG) for accurate responses.
-* Returns only information available in the video transcript.
+- Extracts transcripts directly from YouTube URLs.
+- Splits transcripts into semantic chunks.
+- Stores embeddings in ChromaDB.
+- Retrieves relevant context using MMR search.
+- Answers questions using the Groq Llama 3.1 model.
+- Uses Retrieval-Augmented Generation (RAG) for accurate responses.
+- Returns answers based only on the video transcript.
 
 ---
 
 ## 🛠️ Tech Stack
 
-* Python
-* LangChain
-* ChromaDB
-* Groq (Llama 3.1 8B Instant)
-* Hugging Face Sentence Transformers
-* YouTube Transcript API
-* python-dotenv
+- Python
+- LangChain
+- ChromaDB
+- Groq (Llama 3.1 8B Instant)
+- Hugging Face Sentence Transformers
+- YouTube Transcript API
+- python-dotenv
 
 ---
 
@@ -96,10 +96,11 @@ GROQ_API_KEY=your_groq_api_key
 python chatbot.py
 ```
 
-Example:
+### Example
 
 ```text
-Enter Video ID: dQw4w9WgXcQ
+Enter YouTube URL:
+https://www.youtube.com/watch?v=dQw4w9WgXcQ
 
 Ask a Question:
 What is the main topic of the video?
@@ -109,54 +110,53 @@ What is the main topic of the video?
 
 ## 🧠 How It Works
 
-1. User enters a YouTube video ID.
-2. Transcript is extracted from the video.
-3. Transcript is split into chunks.
-4. Chunks are converted into embeddings.
-5. Embeddings are stored in ChromaDB.
-6. Relevant chunks are retrieved using MMR search.
-7. Groq Llama 3.1 generates the final answer based only on the retrieved context.
+1. User enters a YouTube video URL.
+2. The application extracts the Video ID from the URL.
+3. Transcript is fetched using the YouTube Transcript API.
+4. Transcript is split into semantic chunks.
+5. Chunks are converted into embeddings.
+6. Embeddings are stored in ChromaDB.
+7. Relevant chunks are retrieved using MMR search.
+8. Groq Llama 3.1 generates an answer based only on the retrieved transcript.
 
 ---
 
 ## 📦 Dependencies
 
-* langchain
-* langchain-core
-* langchain-community
-* langchain-groq
-* langchain-huggingface
-* langchain-text-splitters
-* langchain-chroma
-* chromadb
-* sentence-transformers
-* transformers
-* torch
-* youtube-transcript-api
-* python-dotenv
+- langchain
+- langchain-core
+- langchain-community
+- langchain-groq
+- langchain-huggingface
+- langchain-text-splitters
+- langchain-chroma
+- chromadb
+- sentence-transformers
+- transformers
+- torch
+- youtube-transcript-api
+- python-dotenv
 
 ---
 
 ## 📌 Future Improvements
 
-* Streamlit web interface
-* Chat history support
-* Multi-video knowledge base
-* PDF and document support
-* Source citations in responses
-* Multi-language transcript support
+- Streamlit Web Interface
+- Chat History Support
+- Multi-Video Knowledge Base
+- PDF & Document Chat
+- Source Citations
+- Multi-language Transcript Support
+- Conversation Memory
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome. Feel free to fork the repository, create a feature branch, and submit a pull request.
+Contributions are welcome! Feel free to fork this repository, create a feature branch, and submit a pull request.
 
 ---
 
 ## 📄 License
 
 This project is intended for learning and educational purposes. You may modify and use it according to your requirements.
-
----
-
