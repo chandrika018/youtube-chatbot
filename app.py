@@ -213,22 +213,27 @@ if video_url:
         
         # 1. User Message Render & Append
         st.session_state.messages.append({"role": "user", "content": question})
-        
-        # 2. Assistant Response Computation
-        with st.spinner("Traversing context spaces..."):
-            answer = ask_question(video_url, question)
-            
+        with st.chat_message("user"):
+            st.markdown(question)
+
+        with st.chat_message("assistant"):
+            # st.write_stream direct generator functions ko consume karke live UI par print karta hai
+            full_response = st.write_stream(ask_question(video_url, question))
+       
             # Mock RAG logs for showcase to mentor
-            rag_metadata = {
+        rag_metadata = {
                 "similarity_score": "0.892 Cosine Metric",
                 "retrieved_nodes": ["Chunk #12", "Chunk #15"],
                 "target_timestamp": "12:45"
             }
+            # Expander ko live render ke baad dikhane ke liye
+        with st.expander("🛠️ Analytics Protocol Logs", expanded=False):
+            st.json(rag_metadata)
             
         # 3. Append to Session History and Rerun to update the main view
         st.session_state.messages.append({
             "role": "assistant", 
-            "content": answer,
+            "content": full_response,
             "rag_data": rag_metadata
         })
         st.rerun()

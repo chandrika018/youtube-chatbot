@@ -15,7 +15,8 @@ load_dotenv()
 llm = ChatGroq(
         model="openai/gpt-oss-20b",
         groq_api_key=os.getenv("GROQ_API_KEY"),
-        temperature=0.3
+        temperature=0.3,
+        streaming=True
     )
 
 
@@ -73,17 +74,20 @@ def ask_question(video_url: str, question: str):
 
     # LLM
     t3 = time.time()
-    response = chain.invoke(
-        {
-            "context": context,
-            "question": question
-        }
-    )
+   
+    messages = prompt.format_messages(
+            context= context,
+            question= question
+        )
+    for chunk in llm.stream(messages):
+        yield chunk.content
+
+   
     print(f"LLM Time: {time.time()-t3:.2f} sec")
 
     print(f"Total Time: {time.time()-total_start:.2f} sec")
 
-    return response.content
+    # return response.content
 
 
 
