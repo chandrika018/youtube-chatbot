@@ -3,24 +3,20 @@ import os
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
-import time
-from retriever import get_retriever
-
-
 # Load Environment Variables
 load_dotenv()
 
 
-    # Gemini Model
-llm = ChatGroq(
+def get_llm():
+       # Gemini Model
+    llm = ChatGroq(
         model="openai/gpt-oss-20b",
         groq_api_key=os.getenv("GROQ_API_KEY"),
         temperature=0.3,
         streaming=True
     )
-
-
-    # Prompt Template
+    return llm
+        # Prompt Template
 prompt = ChatPromptTemplate.from_template(
     """
 You are a Retrieval-Augmented Generation (RAG) assistant.
@@ -46,49 +42,11 @@ Answer:
     """
     )
 
-
-    # Create Chain
-chain = prompt | llm
-
-def ask_question(video_url: str, question: str):
-
-    total_start = time.time()
-
-    # Retriever
-    t1 = time.time()
-    retriever = get_retriever(video_url)
-    print(f"Retriever Time: {time.time()-t1:.2f} sec")
-
-    if retriever is None:
-        return "Transcript not found."
-
-    # Retrieval
-    t2 = time.time()
-    docs = retriever.invoke(question)
-    print(f"Search Time: {time.time()-t2:.2f} sec")
-
-    if not docs:
-        return "I couldn't find relevant information in the video."
-
-    context = "\n\n".join(doc.page_content for doc in docs)
-
-    # LLM
-    t3 = time.time()
-   
-    messages = prompt.format_messages(
-            context= context,
-            question= question
-        )
-    for chunk in llm.stream(messages):
-        yield chunk.content
-
-   
-    print(f"LLM Time: {time.time()-t3:.2f} sec")
-
-    print(f"Total Time: {time.time()-total_start:.2f} sec")
-
-    # return response.content
-
+def get_chain():
+    llm = get_llm()
+      # Create Chain
+    chain = prompt | llm
+    return chain
 
 
 
@@ -110,13 +68,4 @@ if __name__ == "__main__":
         if question.lower() == "exit":
             break
 
-
-        answer = ask_question(
-            video_url,
-            question
-        )
-
-
-        print("\nAnswer:")
-        print(answer)
-
+ 

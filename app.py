@@ -1,5 +1,6 @@
 import streamlit as st
-from chatbot import ask_question  # Backend logic intact
+from memory import get_graph  # Backend logic intact
+import uuid
 
 # ==========================================
 # 1. PAGE CONFIGURATION & PREMIUM STYLING
@@ -97,9 +98,34 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize Chat History
+# Initialize Session States (Chat Messages & Unique Memory Thread)
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "thread_id" not in st.session_state:
+    st.session_state.thread_id = str(uuid.uuid4())
+
+# ==========================================
+# MEMORY GRAPH CORE INTEGRATION
+# ==========================================
+def stream_graph_response(url, question):
+    """
+    Invokes the backend compiled graph with stateful thread memory
+    and yields chunks for Streamlit's real-time streaming interface.
+    """
+    try:
+        app_graph = get_graph()
+        config = {"configurable": {"thread_id": st.session_state.thread_id}}
+        
+        # Stream model text chunks from the LangGraph execution flow
+        for chunk, metadata in app_graph.stream(
+            { "question":question, "video_url": url},
+            config = config,
+            stream_mode="messages"
+        ):
+            if chunk.content:
+                yield chunk.content
+    except Exception as e:
+        yield f"⚠️ Memory Sync Error: {str(e)}"
 
 # ==========================================
 # 2. SIDEBAR NAVIGATION & PIPELINE SPECS
@@ -115,22 +141,25 @@ with st.sidebar:
     
     if st.button("✨ New Exploration Space", use_container_width=True):
         st.session_state.messages = []
+        st.session_state.thread_id = str(uuid.uuid4())  # Creates a fresh memory scope
         st.rerun()
         
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("<p style='font-size:0.85rem; font-weight:600; color:#94A3B8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;'>⚙️ Active Pipeline Specs</p>", unsafe_allow_html=True)
     
-    st.markdown("""
+    st.markdown(f"""
         <div style='background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.5) 100%); border-radius: 14px; padding: 1rem; border-left: 4px solid #6366F1; border-top: 1px solid rgba(255,255,255,0.03);'>
             <p style='margin:0 0 8px 0; font-size: 0.82rem; color: #E2E8F0; display:flex; align-items:center; gap:8px;'>🧬 <strong>Embeddings:</strong> <span style='color:#94A3B8;'>HF-MiniLM-L6</span></p>
             <p style='margin:0 0 8px 0; font-size: 0.82rem; color: #E2E8F0; display:flex; align-items:center; gap:8px;'>🗄️ <strong>Vector Index:</strong> <span style='color:#94A3B8;'>ChromaDB Vector</span></p>
-            <p style='margin:0; font-size: 0.82rem; color: #E2E8F0; display:flex; align-items:center; gap:8px;'>🔥 <strong>Core Engine:</strong> <span style='color:#A855F7; font-weight:600;'>Gemini-Pro</span></p>
+            <p style='margin:0 0 8px 0; font-size: 0.82rem; color: #E2E8F0; display:flex; align-items:center; gap:8px;'>🔥 <strong>Core Engine:</strong> <span style='color:#A855F7; font-weight:600;'>Gemini-Pro</span></p>
+            <p style='margin:0; font-size: 0.72rem; color: #64748B; word-break: break-all;'>🆔 Session-ID: {st.session_state.thread_id[:13]}...</p>
         </div>
     """, unsafe_allow_html=True)
     
     st.markdown("<br><br>", unsafe_allow_html=True)
     if st.button("🗑️ Reset Chat Database", use_container_width=True):
         st.session_state.messages = []
+        st.session_state.thread_id = str(uuid.uuid4())
         st.rerun()
 
 # ==========================================
@@ -213,24 +242,24 @@ if video_url:
         
         # 1. User Message Render & Append
         st.session_state.messages.append({"role": "user", "content": question})
-        with st.chat_message("user"):
-            st.markdown(question)
+        with workspace_layout:
+            with st.chat_message("user"):
+                st.markdown(question)
 
-        with st.chat_message("assistant"):
-            # st.write_stream direct generator functions ko consume karke live UI par print karta hai
-            full_response = st.write_stream(ask_question(video_url, question))
-       
-            # Mock RAG logs for showcase to mentor
-        rag_metadata = {
-                "similarity_score": "0.892 Cosine Metric",
-                "retrieved_nodes": ["Chunk #12", "Chunk #15"],
-                "target_timestamp": "12:45"
-            }
-            # Expander ko live render ke baad dikhane ke liye
-        with st.expander("🛠️ Analytics Protocol Logs", expanded=False):
-            st.json(rag_metadata)
+            # 2. Assistant Real-time Stream Response
+            with st.chat_message("assistant"):
+                full_response = st.write_stream(stream_graph_response(video_url, question))
+                
+                # Mock RAG logs for showcase to mentor
+                rag_metadata = {
+                    "similarity_score": "0.892 Cosine Metric",
+                    "retrieved_nodes": ["Chunk #12", "Chunk #15"],
+                    "target_timestamp": "12:45"
+                }
+                with st.expander("🛠️ Analytics Protocol Logs", expanded=False):
+                    st.json(rag_metadata)
             
-        # 3. Append to Session History and Rerun to update the main view
+        # 3. Append to Session History and Rerun to update views cleanly
         st.session_state.messages.append({
             "role": "assistant", 
             "content": full_response,
