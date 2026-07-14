@@ -1,7 +1,5 @@
 from vector_store import get_vector_store
-
-
-import os
+from vector_store import get_vector_file
 
 def get_retriever(video_url: str):
      
@@ -12,14 +10,23 @@ def get_retriever(video_url: str):
 
     retriever=vector_db.as_retriever(
         search_type = "mmr",
-        search_kwargs={"k": 4}
-        ),
-        
-     
-
+        search_kwargs={"k": 3}
+        )
+    print(type(retriever))
     return retriever
+   
+def get_retri_file(uploaded_file):
+    vector_db = get_vector_file(uploaded_file)
 
-
+    if vector_db is None:
+        return None
+    
+    retri_text=vector_db.as_retriever(
+        search_type = "mmr",
+        search_kwargs={"k": 3}
+        )
+    print(type(retri_text))
+    return retri_text
 
 # Testing
 if __name__ == "__main__":

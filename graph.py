@@ -18,7 +18,7 @@ def retrieve(state: ChatState):
 
     retriever = get_retriever(state["video_url"])
 
-    docs = retriever.ainvoke(state["question"])
+    docs = retriever.invoke(state["question"])
 
     context = "\n\n".join(
         doc.page_content
@@ -28,10 +28,9 @@ def retrieve(state: ChatState):
     return {
         "context": context
     }
-
-def generate(state: ChatState):
+async def generate(state: ChatState):
     chain = get_chain()
-    response = chain.ainvoke(
+    response = await chain.ainvoke(
         {
             "context": state["context"],
             "question": state["question"]
@@ -41,6 +40,7 @@ def generate(state: ChatState):
     return {
         "answer": response.content
     }
+
 
 
 def get_graph():

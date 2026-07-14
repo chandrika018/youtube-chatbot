@@ -7,15 +7,13 @@ from langchain_groq import ChatGroq
 load_dotenv()
 
 
-def get_llm():
-       # Gemini Model
-    llm = ChatGroq(
+llm = ChatGroq(
         model="openai/gpt-oss-20b",
         groq_api_key=os.getenv("GROQ_API_KEY"),
         temperature=0.3,
         streaming=True
-    )
-    return llm
+)
+  
         # Prompt Template
 prompt = ChatPromptTemplate.from_template(
     """
@@ -42,13 +40,43 @@ Answer:
     """
     )
 
+prompt_text = ChatPromptTemplate.from_template(
+    """
+You are a Retrieval-Augmented Generation (RAG) assistant.
+
+Your knowledge is limited ONLY to the retrieved document content.
+
+Instructions:
+
+- Read every retrieved chunk carefully.
+- Answer the user's question using ONLY the retrieved document content.
+- If the answer is spread across multiple chunks, combine the relevant information into a clear and concise response.
+- Never use outside knowledge or make assumptions.
+- Do not invent or hallucinate any facts.
+- If the retrieved content provides only a partial answer, return the available information and do not add anything beyond it.
+- If none of the retrieved chunks contain information related to the user's question, respond exactly with:
+  "I couldn't find that information in the uploaded document."
+
+Retrieved Document Chunks:
+{documents}
+
+Question:
+{question}
+
+Answer:
+    """
+)
+
+def get_chain_text():
+    chain_text = prompt_text | llm
+    return chain_text
+
 def get_chain():
-    llm = get_llm()
       # Create Chain
     chain = prompt | llm
     return chain
 
-
+print("chatbot.py loaded successfully")
 
 
 # ---------------- Testing ----------------

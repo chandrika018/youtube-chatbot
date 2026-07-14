@@ -1,7 +1,7 @@
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from transcript import get_transcript
-
+from docuLoader import load_document
 # Load embedding model only once
 embedding_model = HuggingFaceEmbeddings(
     model_name="all-MiniLM-L6-v2"
@@ -26,16 +26,36 @@ def get_documents(video_url: str):
 
     return docs
 
+def get_text(uploaded_file):
+
+    print("Function called")
+    documents = load_document(uploaded_file)
+
+    if documents is None:
+        return None
+    
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200
+    )
+
+    text_docs = splitter.split_documents(documents)
+    
+    return text_docs
 
 def get_embedding_model():
     return embedding_model
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    video_url = input("Enter Video URL: ")
+#     if input == "video_url":
+#         video_url = input("Enter Video URL: ")
 
-    docs = get_documents(video_url)
+#         docs = get_documents(video_url)
+#     else:
+        
 
-    if docs:
-        print(f"Chunks: {len(docs)}")
+
+#     if docs:
+#         print(f"Chunks: {len(docs)}")
