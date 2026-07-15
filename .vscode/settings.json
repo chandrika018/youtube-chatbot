@@ -1,0 +1,16 @@
+{
+    "python.analysis.exclude": [
+        "**/venv",
+        "**/venv/**"
+    ],
+    "python.analysis.ignore": [
+        "**/venv",
+        "**/venv/**"
+    ],
+    "search.exclude": {
+        "**/venv": true
+    },
+    "files.watcherExclude": {
+        "**/venv/**": true
+    }
+}

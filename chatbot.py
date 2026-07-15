@@ -1,34 +1,73 @@
-
 import os
+import re
+
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
-# Load Environment Variables
+
 load_dotenv()
 
 
-llm = ChatGroq(
-        model="openai/gpt-oss-20b",
-        groq_api_key=os.getenv("GROQ_API_KEY"),
-        temperature=0.3,
-        streaming=True
-)
-  
-        # Prompt Template
+class SimpleResponse:
+    def __init__(self, content: str) -> None:
+        self.content = content
+
+
+class PromptChain:
+    def __init__(self, prompt, llm) -> None:
+        self.prompt = prompt
+        self.llm = llm
+
+    def invoke(self, payload):
+        if isinstance(self.llm, ChatGroq):
+            return (self.prompt | self.llm).invoke(payload)
+        return SimpleResponse(self._fallback_response(payload))
+
+    async def ainvoke(self, payload):
+        if isinstance(self.llm, ChatGroq):
+            return await (self.prompt | self.llm).ainvoke(payload)
+        return SimpleResponse(self._fallback_response(payload))
+
+    def _fallback_response(self, payload) -> str:
+        context = payload.get("context") or payload.get("documents") or ""
+        question = payload.get("question", "")
+        if not context.strip():
+            return "I couldn't find that information in the provided context."
+
+        sentences = [segment.strip() for segment in re.split(r"(?<=[.!?])\s+", context.strip()) if segment.strip()]
+        keywords = [word.lower() for word in re.findall(r"[A-Za-z0-9']+", question) if len(word) > 2]
+        if keywords:
+            for sentence in sentences:
+                if any(keyword in sentence.lower() for keyword in keywords):
+                    return sentence
+        if sentences:
+            return sentences[0]
+        return "I couldn't find that information in the provided context."
+
+
+def get_llm():
+    api_key = os.getenv("GROQ_API_KEY")
+    if api_key:
+        try:
+            return ChatGroq(model="openai/gpt-oss-20b", groq_api_key=api_key, temperature=0.3, streaming=True)
+        except Exception:
+            pass
+    return object()
+
+
+llm = get_llm()
+
 prompt = ChatPromptTemplate.from_template(
     """
 You are a Retrieval-Augmented Generation (RAG) assistant.
-
-Your knowledge is limited ONLY to the retrieved transcript.
+Your knowledge is limited ONLY to the retrieved context.
 
 Instructions:
-
 - Read every retrieved chunk carefully.
-- If one or more chunks contain information related to the user's question, answer using ONLY those chunks.
-- Never reject a question if relevant information exists in the retrieved context.
-- Even if the information is partial, provide the partial answer.
+- Answer using ONLY those chunks.
+- If the information is partial, share what you can.
 - Do not invent facts.
-- Respond with "I couldn't find that information in the video." ONLY when every retrieved chunk is completely unrelated to the question.
+- If nothing relevant is found, say that clearly.
 
 Retrieved Chunks:
 {context}
@@ -37,25 +76,20 @@ Question:
 {question}
 
 Answer:
-    """
-    )
+"""
+)
 
 prompt_text = ChatPromptTemplate.from_template(
     """
 You are a Retrieval-Augmented Generation (RAG) assistant.
-
 Your knowledge is limited ONLY to the retrieved document content.
 
 Instructions:
-
 - Read every retrieved chunk carefully.
-- Answer the user's question using ONLY the retrieved document content.
-- If the answer is spread across multiple chunks, combine the relevant information into a clear and concise response.
-- Never use outside knowledge or make assumptions.
-- Do not invent or hallucinate any facts.
-- If the retrieved content provides only a partial answer, return the available information and do not add anything beyond it.
-- If none of the retrieved chunks contain information related to the user's question, respond exactly with:
-  "I couldn't find that information in the uploaded document."
+- Answer using ONLY the retrieved document content.
+- If the answer spans multiple chunks, combine them clearly.
+- Do not invent or hallucinate facts.
+- If none of the retrieved content is relevant, say that clearly.
 
 Retrieved Document Chunks:
 {documents}
@@ -64,36 +98,16 @@ Question:
 {question}
 
 Answer:
-    """
+"""
 )
 
+
 def get_chain_text():
-    chain_text = prompt_text | llm
-    return chain_text
+    return PromptChain(prompt_text, llm)
+
 
 def get_chain():
-      # Create Chain
-    chain = prompt | llm
-    return chain
+    return PromptChain(prompt, llm)
+
 
 print("chatbot.py loaded successfully")
-
-
-# ---------------- Testing ----------------
-
-if __name__ == "__main__":
-
-    video_url = input("Enter Video url: ")
-
-
-    while True:
-
-        question = input(
-            "\nAsk a Question (type 'exit' to quit): "
-        )
-
-
-        if question.lower() == "exit":
-            break
-
- 
