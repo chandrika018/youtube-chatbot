@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Any, Iterable, List
@@ -42,11 +43,15 @@ def load_documents_from_paths(file_paths: Iterable[str | os.PathLike[str]]) -> l
             raise ValueError(f"The file {path.name} did not contain any readable content.")
 
         for doc in loaded:
+            text = (doc.page_content or "").strip()
+            text = re.sub(r"\s+", " ", text)
+            if not text:
+                continue
             metadata = dict(doc.metadata or {})
             metadata.setdefault("source", "document")
             metadata.setdefault("filename", path.name)
             metadata.setdefault("file_type", suffix.lstrip("."))
-            doc.metadata = metadata
+            doc = Document(page_content=text, metadata=metadata)
             documents.append(doc)
 
     return documents

@@ -7,6 +7,7 @@ from agents.chat_agent import ChatAgent
 from loaders.youtube import extract_video_id, load_youtube_transcript
 from loaders.documents import load_documents_from_paths
 from langchain_core.documents import Document
+from retrievers.rag_retriever import CombinedRetriever
 from vectorstore.faiss_store import KnowledgeBase
 
 
@@ -71,4 +72,44 @@ def test_chat_agent_can_invoke_without_checkpointer_config():
 
     assert 'answer' in result
     assert isinstance(result['answer'], str)
+
+
+def test_combined_retriever_prioritizes_relevant_documents():
+    class DummyRetriever:
+        def __init__(self, docs):
+            self.docs = docs
+
+        def invoke(self, question):
+            return self.docs
+
+    class DummyStore:
+        def __init__(self, docs):
+            self.docs = docs
+
+        def as_retriever(self, k=4, **kwargs):
+            return DummyRetriever(self.docs[:k])
+
+    youtube_docs = [Document(page_content='The weather is sunny and calm today.', metadata={'source': 'youtube'})]
+    document_docs = [Document(page_content='Python programming basics for beginners.', metadata={'source': 'document'})]
+
+    retriever = CombinedRetriever(
+        youtube_store=DummyStore(youtube_docs),
+        document_store=DummyStore(document_docs),
+    )
+
+    result = retriever.retrieve('Tell me about Python programming', source='both')
+
+    assert result[0].page_content.startswith('Python programming')
+
+
+def test_hybrid_retriever_falls_back_to_keyword_matching(tmp_path):
+    store = KnowledgeBase(persist_dir=str(tmp_path / 'hybrid-kb'))
+    store._documents = [
+        Document(page_content='Python programming basics for beginners.', metadata={'source': 'document', 'title': 'Python Basics'})
+    ]
+
+    retriever = store.as_retriever(k=2)
+    result = retriever.invoke('beginner python')
+
+    assert any('Python programming' in doc.page_content for doc in result)
 
