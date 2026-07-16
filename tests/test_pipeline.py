@@ -75,6 +75,14 @@ def test_chat_agent_can_invoke_without_checkpointer_config():
 
 
 def test_combined_retriever_prioritizes_relevant_documents():
+    class DummyEmbeddingModel:
+        # Mocking embeddings vector search parameters
+        def embed_query(self, query):
+            return [1.0 if "python" in query.lower() else 0.0] * 384
+            
+        def embed_documents(self, texts):
+            return [[1.0 if "python" in text.lower() else 0.0] * 384 for text in texts]
+
     class DummyRetriever:
         def __init__(self, docs):
             self.docs = docs
@@ -85,6 +93,8 @@ def test_combined_retriever_prioritizes_relevant_documents():
     class DummyStore:
         def __init__(self, docs):
             self.docs = docs
+            # Mock model linkage ensures accurate evaluation
+            self.embedding_model = DummyEmbeddingModel()
 
         def as_retriever(self, k=4, **kwargs):
             return DummyRetriever(self.docs[:k])
@@ -112,4 +122,3 @@ def test_hybrid_retriever_falls_back_to_keyword_matching(tmp_path):
     result = retriever.invoke('beginner python')
 
     assert any('Python programming' in doc.page_content for doc in result)
-

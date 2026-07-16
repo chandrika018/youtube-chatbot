@@ -1,5 +1,6 @@
 import os
 import re
+from typing import Any, Callable, Optional
 
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
@@ -18,15 +19,35 @@ class PromptChain:
         self.prompt = prompt
         self.llm = llm
 
-    def invoke(self, payload):
+    def invoke(self, payload, *, stream: bool = False, on_token: Optional[Callable[[str], None]] = None):
         if isinstance(self.llm, ChatGroq):
+            if stream:
+                return self._stream_response(payload, on_token=on_token)
             return (self.prompt | self.llm).invoke(payload)
         return SimpleResponse(self._fallback_response(payload))
 
-    async def ainvoke(self, payload):
+    async def ainvoke(self, payload, *, stream: bool = False, on_token: Optional[Callable[[str], None]] = None):
         if isinstance(self.llm, ChatGroq):
+            if stream:
+                return await self._astream_response(payload, on_token=on_token)
             return await (self.prompt | self.llm).ainvoke(payload)
         return SimpleResponse(self._fallback_response(payload))
+
+    def _stream_response(self, payload, *, on_token: Optional[Callable[[str], None]] = None):
+        response = (self.prompt | self.llm).invoke(payload)
+        content = getattr(response, "content", "") or ""
+        if on_token is not None:
+            for chunk in content:
+                on_token(chunk)
+        return SimpleResponse(content)
+
+    async def _astream_response(self, payload, *, on_token: Optional[Callable[[str], None]] = None):
+        response = await (self.prompt | self.llm).ainvoke(payload)
+        content = getattr(response, "content", "") or ""
+        if on_token is not None:
+            for chunk in content:
+                on_token(chunk)
+        return SimpleResponse(content)
 
     def _fallback_response(self, payload) -> str:
         context = payload.get("context") or payload.get("documents") or ""

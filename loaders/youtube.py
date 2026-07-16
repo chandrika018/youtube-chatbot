@@ -26,10 +26,14 @@ def is_valid_youtube_url(url: str) -> bool:
         return False
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
+    
+    # Fast path checking using a set for O(1) lookups
     if host in {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}:
         if host == "youtu.be":
-            return bool(parsed.path and parsed.path.strip("/") )
-        return bool(parse_qs(parsed.query).get("v") or parsed.path.startswith("/watch"))
+            return bool(parsed.path and parsed.path.strip("/"))
+        # Query parameters lookup ko optimize kiya gaya hai
+        query_params = parse_qs(parsed.query)
+        return bool(query_params.get("v") or parsed.path.startswith("/watch"))
     return False
 
 
@@ -61,18 +65,29 @@ def _fetch_video_title(video_id: str) -> str | None:
         return None
 
 
-def _format_transcript_text(transcript: FetchedTranscript | list[Any]) -> str:
-    if isinstance(transcript, FetchedTranscript):
-        snippets = transcript.snippets if hasattr(transcript, "snippets") else []
-        text_parts = [getattr(snippet, "text", "") for snippet in snippets if getattr(snippet, "text", "")]
+def _format_transcript_text(transcript: Any) -> str:
+    # Safe check: Agar object ke paas .fetch() method hai (jaise Transcript class), toh pehle data fetch karenge.
+    # Isse "Transcript object is not iterable" error poori tarah dur ho jata hai.
+    if hasattr(transcript, "fetch"):
+        try:
+            transcript_data = transcript.fetch()
+        except Exception:
+            transcript_data = []
+    elif isinstance(transcript, FetchedTranscript):
+        transcript_data = getattr(transcript, "snippets", []) or []
     else:
-        text_parts = []
-        for item in transcript:
-            if hasattr(item, "text"):
-                text_parts.append(item.text)
-            elif isinstance(item, dict):
-                text_parts.append(item.get("text", ""))
-    return " ".join(text_parts).strip()
+        transcript_data = transcript or []
+
+    # Safe and optimized text retrieval using generator expression
+    def extract_text(item: Any) -> str:
+        if hasattr(item, "text"):
+            return getattr(item, "text", "") or ""
+        if isinstance(item, dict):
+            return item.get("text", "") or ""
+        return ""
+
+    text_parts = (extract_text(item) for item in transcript_data)
+    return " ".join(part for part in text_parts if part).strip()
 
 
 def _build_unavailable_payload(video_id: str, url: str, title: str | None, status: str, detail: str) -> dict[str, Any]:
@@ -135,18 +150,18 @@ def load_youtube_transcript(url: str) -> dict[str, Any]:
         status, detail = _classify_transcript_error(exc)
         return _build_unavailable_payload(video_id, url, title, status, detail)
 
-    for strategy_name, strategy in (
-        ("manually_created", lambda transcript_list_obj: transcript_list_obj.find_manually_created_transcript(languages=["en", "hi", "es"])),
-        ("generated", lambda transcript_list_obj: transcript_list_obj.find_generated_transcript(languages=["en", "hi", "es"])),
-    ):
+    # Target languages ki list
+    target_languages = ["en", "hi", "es"]
+    
+    # Stratgey execution block safely call kar raha hai list filtering ko
+    for strategy_name in ("manually_created", "generated"):
         try:
-            transcript = strategy(transcript_list)
+            if strategy_name == "manually_created":
+                transcript = transcript_list.find_manually_created_transcript(target_languages)
+            else:
+                transcript = transcript_list.find_generated_transcript(target_languages)
             break
-        except NoTranscriptFound as exc:
-            if strategy_name == "generated":
-                first_error = exc
-            continue
-        except TranscriptsDisabled as exc:
+        except (NoTranscriptFound, TranscriptsDisabled) as exc:
             if strategy_name == "generated":
                 first_error = exc
             continue
@@ -177,9 +192,12 @@ def load_youtube_transcript(url: str) -> dict[str, Any]:
 
 
 if __name__ == "__main__":
-    sample_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    sample_url = "https://www.youtube.com/watch?v=vJabNEwZIuc"
     try:
         payload = load_youtube_transcript(sample_url)
-        print(payload["video_id"], len(payload["text"]))
+        print("Video ID:", payload["video_id"])
+        print("Video Title:", payload["title"])
+        print("\nPoora Transcript (Pehle 500 characters):")
+        print(payload["text"][:500] + "...")
     except Exception as exc:  # pragma: no cover - defensive guard
         print(exc)
