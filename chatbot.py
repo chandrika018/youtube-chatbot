@@ -1,12 +1,18 @@
 import os
 import re
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 
 load_dotenv()
+
+# Precompiled once at module load instead of inside _fallback_response, where
+# they were previously recompiled on every call (every fallback invocation).
+# Same patterns, same behavior — just compiled once and reused.
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+_KEYWORD_RE = re.compile(r"[A-Za-z0-9']+")
 
 
 class SimpleResponse:
@@ -55,8 +61,8 @@ class PromptChain:
         if not context.strip():
             return "I couldn't find that information in the provided context."
 
-        sentences = [segment.strip() for segment in re.split(r"(?<=[.!?])\s+", context.strip()) if segment.strip()]
-        keywords = [word.lower() for word in re.findall(r"[A-Za-z0-9']+", question) if len(word) > 2]
+        sentences = [segment.strip() for segment in _SENTENCE_SPLIT_RE.split(context.strip()) if segment.strip()]
+        keywords = [word.lower() for word in _KEYWORD_RE.findall(question) if len(word) > 2]
         if keywords:
             for sentence in sentences:
                 if any(keyword in sentence.lower() for keyword in keywords):
@@ -70,7 +76,7 @@ def get_llm():
     api_key = os.getenv("GROQ_API_KEY")
     if api_key:
         try:
-            return ChatGroq(model="openai/gpt-oss-20b", groq_api_key=api_key, temperature=0.3, streaming=True)
+            return ChatGroq(model="llama-3.1-8b-instant", groq_api_key=api_key, temperature=0.3, streaming=True)
         except Exception:
             pass
     return object()

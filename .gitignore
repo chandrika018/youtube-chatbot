@@ -3,3 +3,4 @@ venv/
 vector_store/
 __pycache__
 .pytest_cache
+logs/app.log

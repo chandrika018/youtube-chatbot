@@ -4,12 +4,16 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import Any, Iterable, List
+from typing import Any, Iterable
 
 from langchain_community.document_loaders import Docx2txtLoader, PyPDFLoader, TextLoader
 from langchain_core.documents import Document
 
 SUPPORTED_EXTENSIONS = {".pdf", ".txt", ".docx"}
+
+# Precompiled once at module load instead of recompiling on every call to
+# load_documents_from_paths (previously recompiled per-document via re.sub).
+_WHITESPACE_RE = re.compile(r"\s+")
 
 
 def is_supported_file(file_name: str | os.PathLike[str]) -> bool:
@@ -44,7 +48,7 @@ def load_documents_from_paths(file_paths: Iterable[str | os.PathLike[str]]) -> l
 
         for doc in loaded:
             text = (doc.page_content or "").strip()
-            text = re.sub(r"\s+", " ", text)
+            text = _WHITESPACE_RE.sub(" ", text)
             if not text:
                 continue
             metadata = dict(doc.metadata or {})
@@ -58,7 +62,7 @@ def load_documents_from_paths(file_paths: Iterable[str | os.PathLike[str]]) -> l
 
 
 def load_documents_from_uploads(uploaded_files: Iterable[Any]) -> list[Document]:
-    temp_paths: List[str] = []
+    temp_paths: list[str] = []
     try:
         for uploaded_file in uploaded_files:
             if uploaded_file is None:

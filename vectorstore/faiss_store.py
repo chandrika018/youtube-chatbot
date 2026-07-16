@@ -1,22 +1,35 @@
 from __future__ import annotations
 
 import os
+
 import re
 from pathlib import Path
 from typing import Any
 
+import streamlit as st
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 
 from processing.chunking import chunk_documents
 
 
+@st.cache_resource
+def _load_embedding_model(model_name: str) -> HuggingFaceBgeEmbeddings:
+    # Streamlit resource cache: yeh function ek hi baar per model_name run hoga,
+    # chahe KnowledgeBase kitni bhi baar banaya jaye (youtube_store, document_stor
+    # dono ek hi model_name use karte hain, isliye model sirf ek baar load hoga).
+    return HuggingFaceBgeEmbeddings(
+        model_name=model_name,
+        query_instruction="Represent this question for retrieving supporting documents: ",
+    )
+
+
 class KnowledgeBase:
-    def __init__(self, persist_dir: str | os.PathLike[str], embedding_model_name: str = "sentence-transformers/all-mpnet-base-v2") -> None:
+    def __init__(self, persist_dir: str | os.PathLike[str], embedding_model_name: str = "BAAI/bge-small-en-v1.5") -> None:
         self.persist_dir = Path(persist_dir)
         self.persist_dir.mkdir(parents=True, exist_ok=True)
-        self.embedding_model = HuggingFaceEmbeddings(model_name=embedding_model_name)
+        self.embedding_model = _load_embedding_model(embedding_model_name)
         self.vector_store: FAISS | None = None
         self._documents: list[Document] = []
 
@@ -43,7 +56,7 @@ class KnowledgeBase:
         return None
 
     def add_documents(self, documents: list[Document], *, source: str) -> FAISS:
-        chunks = chunk_documents(documents, chunk_size=450, chunk_overlap=80)
+        chunks = chunk_documents(documents, chunk_size=800, chunk_overlap=150)
         if not chunks:
             raise ValueError("No document chunks were produced.")
         

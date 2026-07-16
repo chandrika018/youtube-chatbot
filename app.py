@@ -1,6 +1,6 @@
 import os
 import uuid
-
+import time  
 import streamlit as st
 
 from agents.chat_agent import ChatAgent
@@ -44,50 +44,62 @@ st.markdown(
     <style>
     :root {
         color-scheme: dark;
+        --bg: #0d1117;
+        --bg-subtle: #161b22;
+        --border: #30363d;
+        --text: #e6edf3;
+        --text-muted: #8b949e;
+        --accent: #388bfd;
+        --accent-hover: #58a6ff;
+        --radius: 6px;
+    }
+    html, body, [class*="css"] {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
     }
     .stApp {
-        background: radial-gradient(circle at top left, #111827 0%, #020617 55%, #0f172a 100%);
-        color: #f8fafc;
+        background: var(--bg);
+        color: var(--text);
     }
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
-        border-right: 1px solid rgba(148, 163, 184, 0.18);
+        background: var(--bg-subtle);
+        border-right: 1px solid var(--border);
     }
     .block-container {
-        padding-top: 1.2rem;
-        padding-bottom: 2rem;
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+        max-width: 900px;
     }
     .card {
-        border-radius: 20px;
-        padding: 1rem 1.2rem;
-        background: rgba(15, 23, 42, 0.82);
-        box-shadow: 0 12px 35px rgba(2, 6, 23, 0.45);
-        border: 1px solid rgba(148, 163, 184, 0.25);
-        backdrop-filter: blur(10px);
+        border-radius: var(--radius);
+        padding: 1.25rem 1.4rem;
+        background: var(--bg-subtle);
+        border: 1px solid var(--border);
+        box-shadow: none;
     }
     div[data-testid="stFileUploader"] > section {
-        border-radius: 14px;
-        border: 1px dashed #38bdf8;
-        padding: 0.7rem;
-        background: rgba(8, 15, 29, 0.78);
+        border-radius: var(--radius);
+        border: 1px dashed var(--border);
+        padding: 0.9rem;
+        background: var(--bg-subtle);
     }
     .source-box {
-        border: 1px solid rgba(56, 189, 248, 0.22);
-        border-radius: 12px;
-        padding: 0.7rem 0.8rem;
-        background: rgba(15, 23, 42, 0.9);
-        margin-top: 0.45rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 0.6rem 0.75rem;
+        background: var(--bg-subtle);
+        margin-top: 0.4rem;
     }
     .source-label {
-        font-size: 0.78rem;
-        color: #7dd3fc;
+        font-size: 0.72rem;
+        color: var(--text-muted);
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.04em;
+        font-weight: 600;
     }
     .source-value {
-        font-size: 0.95rem;
-        color: #f8fafc;
-        margin-top: 0.2rem;
+        font-size: 0.9rem;
+        color: var(--text);
+        margin-top: 0.15rem;
         word-break: break-word;
     }
     .stTextInput > div > div > input,
@@ -95,23 +107,32 @@ st.markdown(
     .stSelectbox > div > div,
     .stMultiSelect > div > div,
     .stFileUploader > div {
-        background: rgba(15, 23, 42, 0.92);
-        color: #f8fafc;
-        border: 1px solid rgba(148, 163, 184, 0.25);
-        border-radius: 10px;
+        background: var(--bg-subtle);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
     }
     .stButton > button {
-        border-radius: 10px;
-        background: linear-gradient(90deg, #38bdf8 0%, #818cf8 100%);
-        color: white;
-        border: none;
-        font-weight: 600;
+        border-radius: var(--radius);
+        background: var(--accent);
+        color: #ffffff;
+        border: 1px solid var(--accent);
+        font-weight: 500;
+        transition: background 0.1s ease;
     }
     .stButton > button:hover {
-        filter: brightness(1.05);
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
     }
     .stAlert, .stInfo, .stSuccess, .stWarning, .stError {
-        border-radius: 12px;
+        border-radius: var(--radius);
+    }
+    hr {
+        border-color: var(--border);
+    }
+    /* Ensure Streamlit's own text elements (markdown, captions, labels) render white/light on dark bg */
+    p, span, label, li, .stMarkdown, .stCaption, [data-testid="stMarkdownContainer"] {
+        color: var(--text);
     }
     </style>
     """,
@@ -150,9 +171,9 @@ def show_status(message: str, kind: str = "info") -> None:
 with st.sidebar:
     st.markdown(
         """
-        <div style='padding: 0.4rem 0 1rem 0;'>
-            <h2 style='margin:0; color:white;'>🧠 YouTube & Document Chat</h2>
-            <p style='margin:0.2rem 0 0 0; color:#cbd5e1; font-size:0.9rem;'>Production-ready RAG assistant</p>
+        <div style='padding: 0.3rem 0 1rem 0;'>
+            <h2 style='margin:0; color:#e6edf3; font-size:1.15rem; font-weight:600;'>🧠 YouTube &amp; Document Chat</h2>
+            <p style='margin:0.25rem 0 0 0; color:#8b949e; font-size:0.85rem;'>Retrieval-augmented chat assistant</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -183,10 +204,17 @@ with st.sidebar:
         try:
             with st.spinner("Processing your sources..."):
                 if has_youtube:
+                    t0 = time.perf_counter()
                     youtube_payload = load_youtube_transcript(youtube_url)
+                    t1 = time.perf_counter()
+                    logger.info("Transcript fetch took %.2f sec", t1 - t0)
+                    logger.info("Transcript length: %d characters", len(youtube_payload["text"]))
+
                     youtube_store_dir = os.path.join("vector_store", youtube_payload["video_id"])
                     youtube_store = KnowledgeBase(persist_dir=youtube_store_dir)
                     youtube_store.reset()
+
+                    t2 = time.perf_counter()
                     youtube_store.add_documents(
                         [
                             Document(
@@ -196,6 +224,9 @@ with st.sidebar:
                         ],
                         source="youtube",
                     )
+                    t3 = time.perf_counter()
+                    logger.info("Embedding + FAISS build took %.2f sec", t3 - t2)
+
                     st.session_state.youtube_store = youtube_store
                     st.session_state.youtube_source = youtube_payload["url"]
                     st.session_state.retriever = None
@@ -235,8 +266,8 @@ with st.sidebar:
 st.markdown(
     """
     <div class='card'>
-        <h1 style='margin:0 0 0.4rem 0; font-size:2rem; color:#f8fafc;'>Ask questions from your uploaded content and YouTube videos</h1>
-        <p style='margin:0; color:#cbd5e1;'>The assistant uses retrieval-augmented generation with source-aware context.</p>
+        <h1 style='margin:0 0 0.35rem 0; font-size:1.5rem; font-weight:600; color:#e6edf3;'>Ask questions from your uploaded content and YouTube videos</h1>
+        <p style='margin:0; color:#8b949e; font-size:0.92rem;'>Answers are generated using retrieval-augmented generation with source-aware context.</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -306,6 +337,6 @@ if question:
     st.rerun()
 
 st.markdown(
-    "<div style='margin-top: 2rem; text-align: center; color: #94a3b8; font-size: 0.8rem;'>Built with Streamlit, LangChain, FAISS, and Hugging Face</div>",
+    "<div style='margin-top: 2.5rem; text-align: center; color: #8b949e; font-size: 0.78rem;'>Built with Streamlit, LangChain, FAISS, and Hugging Face</div>",
     unsafe_allow_html=True,
 )

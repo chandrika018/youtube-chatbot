@@ -26,7 +26,7 @@ def is_valid_youtube_url(url: str) -> bool:
         return False
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
-    
+
     # Fast path checking using a set for O(1) lookups
     if host in {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}:
         if host == "youtu.be":
@@ -65,6 +65,20 @@ def _fetch_video_title(video_id: str) -> str | None:
         return None
 
 
+def _extract_snippet_text(item: Any) -> str:
+    """Return the text of a single transcript snippet, whether it's an object or a dict.
+
+    Hoisted out of `_format_transcript_text` (module level instead of a nested
+    function) so the function object isn't rebuilt on every call to
+    `_format_transcript_text` — same behavior, one less allocation per call.
+    """
+    if hasattr(item, "text"):
+        return getattr(item, "text", "") or ""
+    if isinstance(item, dict):
+        return item.get("text", "") or ""
+    return ""
+
+
 def _format_transcript_text(transcript: Any) -> str:
     # Safe check: Agar object ke paas .fetch() method hai (jaise Transcript class), toh pehle data fetch karenge.
     # Isse "Transcript object is not iterable" error poori tarah dur ho jata hai.
@@ -79,14 +93,7 @@ def _format_transcript_text(transcript: Any) -> str:
         transcript_data = transcript or []
 
     # Safe and optimized text retrieval using generator expression
-    def extract_text(item: Any) -> str:
-        if hasattr(item, "text"):
-            return getattr(item, "text", "") or ""
-        if isinstance(item, dict):
-            return item.get("text", "") or ""
-        return ""
-
-    text_parts = (extract_text(item) for item in transcript_data)
+    text_parts = (_extract_snippet_text(item) for item in transcript_data)
     return " ".join(part for part in text_parts if part).strip()
 
 
@@ -152,7 +159,7 @@ def load_youtube_transcript(url: str) -> dict[str, Any]:
 
     # Target languages ki list
     target_languages = ["en", "hi", "es"]
-    
+
     # Stratgey execution block safely call kar raha hai list filtering ko
     for strategy_name in ("manually_created", "generated"):
         try:
