@@ -2584,3 +2584,4 @@ ModuleNotFoundError("No module named 'faiss.swigfaiss_avx2'")
 2026-07-16 10:15:47,185 INFO httpx: HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-mpnet-base-v2/resolve/main/1_Pooling/config.json "HTTP/1.1 307 Temporary Redirect"
 2026-07-16 10:15:47,343 INFO httpx: HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-mpnet-base-v2/e8c3b32edf5434bc2275fc9bab85f82640a19130/1_Pooling%2Fconfig.json "HTTP/1.1 200 OK"
 2026-07-16 10:15:48,539 INFO httpx: HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-mpnet-base-v2 "HTTP/1.1 200 OK"
+2026-07-16 10:16:19,425 INFO youtube_chat: Loaded 1 uploaded documents
