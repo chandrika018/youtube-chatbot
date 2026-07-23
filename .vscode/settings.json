@@ -1,4 +1,10 @@
 {
+<<<<<<< HEAD
+    "python.defaultInterpreterPath": "${workspaceFolder}/backend/venv/Scripts/python.exe",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/backend"
+    ]
+=======
     "python.analysis.exclude": [
         "**/venv",
         "**/venv/**"
@@ -13,4 +19,5 @@
     "files.watcherExclude": {
         "**/venv/**": true
     }
+>>>>>>> d87bc5c9dc180ecbe8ba0344ad2db5ec59a81c8f
 }
